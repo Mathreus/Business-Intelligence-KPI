@@ -1,0 +1,91 @@
+SELECT DISTINCT
+  ped.vkorg as Empresa,
+  item.werks AS Centro,
+  CASE
+    WHEN cli.land1 = 'BR' THEN 'Brasil'
+    ELSE 'Nada'
+  END Pais,
+  CASE
+    WHEN cli.regio = 'AC' THEN 'Acre'
+    WHEN cli.regio = 'AP' THEN 'Amapá'
+    WHEN cli.regio = 'AM' THEN 'Amazonas'
+    WHEN cli.regio = 'PA' THEN 'Pará'
+    WHEN cli.regio = 'RO' THEN 'Rondônia'
+    WHEN cli.regio = 'RR' THEN 'Roraima'
+    WHEN cli.regio = 'TO' THEN 'Tocantins'
+    WHEN cli.regio = 'AL' THEN 'Alagoas'
+    WHEN cli.regio = 'BA' THEN 'Bahia'
+    WHEN cli.regio = 'CE' THEN 'Ceará'
+    WHEN cli.regio = 'MA' THEN 'Maranhão'
+    WHEN cli.regio = 'PB' THEN 'Paraíba'
+    WHEN cli.regio = 'PE' THEN 'Pernambuco'
+    WHEN cli.regio = 'PI' THEN 'Piauí'
+    WHEN cli.regio = 'RN' THEN 'Rio Grande do Norte'
+    WHEN cli.regio = 'SE' THEN 'Sergipe'
+    WHEN cli.regio = 'DF' THEN 'Brasília'
+    WHEN cli.regio = 'GO' THEN 'Goiás'
+    WHEN cli.regio = 'MT' THEN 'Mato Grosso'
+    WHEN cli.regio = 'MS' THEN 'Mato Grosso do Sul'
+    WHEN cli.regio = 'ES' THEN 'Espírito Santo'
+    WHEN cli.regio = 'MG' THEN 'Minas Gerais'
+    WHEN cli.regio = 'RJ' THEN 'Rio de Janeiro'
+    WHEN cli.regio = 'SP' THEN 'São Paulo'
+    WHEN cli.regio = 'PR' THEN 'Paraná'
+    WHEN cli.regio = 'RS' THEN 'Rio Grande do Sul'
+    WHEN cli.regio = 'SC' THEN 'Itajaí'
+    ELSE 'N/D'
+  END Estado,
+  cli.ort01 as Cidade,
+  ped.auart AS Documentos_Vendas, 
+  ped.abstk as Aprovacao,
+  CASE
+    WHEN ped.spart = '01' THEN 'Consumo'
+    ELSE 'Revenda'
+  END SetorAtividade,
+  extract(month from ped.erdat) as Mes,
+  extract(year from ped.erdat) as Ano,
+  format_date('%m-%y', ped.erdat) as Mes_Ano,
+  ped.erdat AS DataPedido,
+  ped.aedat AS DataCancelamento,
+  DATE_DIFF(CAST(ped.aedat AS DATE), CAST(ped.erdat AS DATE), DAY) AS Diferenca_Dias,
+  ped.kunnr AS ID_Externo, 
+  cli.name1 AS Cliente,
+  cli.stcd1 as CNPJ,
+  cli.stcd2 as CPF,
+  ped.LAST_CHANGED_BY_USER AS Usuario,
+  RIGHT(ped.vbeln, 7) AS Pedido, 
+  RIGHT(item.matnr, 6) AS CodigoMaterial, 
+  item.arktx AS Material,
+  item.kwmeng AS Quantidade, 
+  item.netwr AS Cancelamento,
+  lin.netwr as Faturamento,
+  nf.natop as Referencia,
+  RELV.PARTNER AS Cod_Vendedor, 
+  CONCAT(VEND.BU_SORT2, ' ', VEND.BU_SORT1) AS Vendedor  
+FROM
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbak` AS ped
+INNER JOIN  
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbap` AS item ON
+  ped.mandt = item.mandt AND
+  ped.vbeln = item.vbeln
+INNER JOIN
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.j_1bnflin` AS lin ON
+  lin.xped = item.vbeln AND
+  lin.matnr = item.matnr AND
+  lin.itmnum = item.posnr 
+INNER JOIN
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.j_1bnfdoc` AS nf ON
+  lin.mandt = nf.mandt AND
+  lin.docnum = nf.docnum
+INNER JOIN
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.kna1` AS cli ON
+  ped.mandt = cli.mandt AND
+  ped.kunnr = cli.kunnr
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.but0id` AS relv ON
+  ped.mandt = relv.client AND
+  relv.idnumber = item.perve_ana
+INNER JOIN
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.but000` AS vend ON
+  ped.mandt = vend.client AND
+  relv.partner = vend.partner
