@@ -1,0 +1,115 @@
+SELECT DISTINCT
+  nf.bukrs as Empresa,
+  concat(left(nf.bukrs, 2), right(nf.branch, 2)) as Centro,
+  CASE
+    WHEN nf.land1 = 'BR' THEN 'Brasil'
+    ELSE 'Nada'
+  END Pais,
+  CASE
+    WHEN nf.regio = 'AC' THEN 'Acre'
+    WHEN nf.regio = 'AP' THEN 'Amapá'
+    WHEN nf.regio = 'AM' THEN 'Amazonas'
+    WHEN nf.regio = 'PA' THEN 'Pará'
+    WHEN nf.regio = 'RO' THEN 'Rondônia'
+    WHEN nf.regio = 'RR' THEN 'Roraima'
+    WHEN nf.regio = 'TO' THEN 'Tocantins'
+    WHEN nf.regio = 'AL' THEN 'Alagoas'
+    WHEN nf.regio = 'BA' THEN 'Bahia'
+    WHEN nf.regio = 'CE' THEN 'Ceará'
+    WHEN nf.regio = 'MA' THEN 'Maranhão'
+    WHEN nf.regio = 'PB' THEN 'Paraíba'
+    WHEN nf.regio = 'PE' THEN 'Pernambuco'
+    WHEN nf.regio = 'PI' THEN 'Piauí'
+    WHEN nf.regio = 'RN' THEN 'Rio Grande do Norte'
+    WHEN nf.regio = 'SE' THEN 'Sergipe'
+    WHEN nf.regio = 'DF' THEN 'Brasília'
+    WHEN nf.regio = 'GO' THEN 'Goiás'
+    WHEN nf.regio = 'MT' THEN 'Mato Grosso'
+    WHEN nf.regio = 'MS' THEN 'Mato Grosso do Sul'
+    WHEN nf.regio = 'ES' THEN 'Espírito Santo'
+    WHEN nf.regio = 'MG' THEN 'Minas Gerais'
+    WHEN nf.regio = 'RJ' THEN 'Rio de Janeiro'
+    WHEN nf.regio = 'SP' THEN 'São Paulo'
+    WHEN nf.regio = 'PR' THEN 'Paraná'
+    WHEN nf.regio = 'RS' THEN 'Rio Grande do Sul'
+    WHEN nf.regio = 'SC' THEN 'Santa Catarina'
+    ELSE 'N/D'
+  END Estado,
+  nf.inco2 as Cidade,
+  nf.street as Rua,
+  nf.house_num1 as Numero,
+  nf.pstdat as Data_Emissao,
+  extract(month from nf.pstdat) as Mes,
+  extract(year from nf.pstdat) as Ano,
+  format_date('%m-%y', nf.pstdat) as Mes_Ano,
+  ped.erdat as Data_Pedido,
+  nf.partyp as Tipo_Paceiro,
+  nf.parid as ID_Externo,
+  nf.name1 as Cliente,
+  CASE
+    WHEN ped.spart = '01' THEN 'Consumo'
+    ELSE 'Revenda'
+  END SetorAtividade,
+  cli.stcd1 as CNPJ,
+  cli.stcd2 as CPF,
+  ped.auart as Documento_Vendas,
+  fa.vbtyp_n as Descricao_Documento,
+  ped.abstk as Aprovacao,
+  ped.vbeln as Pedidos,
+  nf.nfenum as Num_Nfe,
+  nf.cancel as Estorno,
+  CASE
+    WHEN nf.direct = '1' THEN 'Entrada'
+    ELSE 'Saída'
+  END Direcao_NF,
+  lin.matkl as GrupoMercadorias,
+  lin.matnr as Cod_Material,
+  lin.maktx as Produto,
+  lin.menge as Quantidade,
+  lin.netwr as Faturamento,
+  lin.netwr as NFs_Canceladas,
+  lin.netwr as Devolucoes,	
+  nf.natop as Referencia,
+  ped.vkbur as Equipe_Vendas,
+  relv.partner as cod_orig_vend, 
+  concat(vend.bu_sort2,' ',vend.bu_sort1) as Vendedor
+FROM
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbak` as ped
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbap` as item on
+  ped.mandt = item.mandt and
+  ped.vbeln = item.vbeln
+INNER JOIN  
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbfa` as fa on
+  ped.mandt = fa.mandt and 
+  ped.vbeln = fa.vbelv --and
+--  vbtyp_n = 'M'
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbrk` as fat on
+  fat.mandt = ped.mandt and
+  fa.vbeln = fat.vbeln
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.vbrp` as rp on
+  rp.mandt = ped.mandt and
+  fat.vbeln = rp.vbeln
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.j_1bnflin` as lin on
+  lin.mandt = ped.mandt and
+  rp.vbeln = lin.refkey and
+  rp.matnr = lin.matnr
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.j_1bnfdoc` as nf on
+  nf.mandt = ped.mandt and
+  lin.docnum = nf.docnum
+INNER JOIN  
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.but0id` as relv on
+  ped.mandt = relv.client and
+  relv.idnumber = item.perve_ana
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.but000` as vend on
+  ped.mandt = vend.client and
+  relv.partner = vend.partner
+INNER JOIN 
+  `production-servers-magnumtires.prdmgm_sap_cdc_processed.kna1` as cli on
+   ped.mandt = cli.mandt and  
+   nf.parid = cli.kunnr
